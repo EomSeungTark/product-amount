@@ -23,8 +23,8 @@ type WeekAmount struct {
 
 type ProductsAmount struct {
 	PRODUCTNAME string `json:"productname"`
-	AMOUNT      string `json:"amount"`
 	EA          string `json:"ea"`
+	AMOUNT      string `json:"amount"`
 	PRICE       string `json:"price"`
 }
 
@@ -77,6 +77,68 @@ func DBToString(rows *sql.Rows, length int, flag string) string {
 		j, _ := json.Marshal(values)
 
 		return string(j)
+	} else if flag == "MonthAmount" {
+		values := make([]WeekAmount, length)
+		temps := make([]WeekAmount, length)
+
+		for days := 0; days < 30; days++ {
+			now := time.Now()
+			before := now.AddDate(0, 0, -29+days)
+			timebefore := fmt.Sprintf("%d-%02d-%02d", before.Year(), before.Month(), before.Day())
+			values[days].DAY = timebefore
+		}
+
+		for rows.Next() {
+			rows.Scan(&temps[i].DAY, &temps[i].AMOUNT)
+			i++
+		}
+
+		for _, temp := range temps {
+			if temp.DAY == "" {
+				continue
+			}
+			fmt.Println(temp)
+
+			for index, value := range values {
+				if temp.DAY == value.DAY {
+					values[index].AMOUNT = temp.AMOUNT
+				}
+			}
+		}
+		j, _ := json.Marshal(values)
+
+		return string(j)
+	} else if flag == "YearAmount" {
+		values := make([]WeekAmount, length)
+		temps := make([]WeekAmount, length)
+
+		for days := 0; days < 365; days++ {
+			now := time.Now()
+			before := now.AddDate(0, 0, -364+days)
+			timebefore := fmt.Sprintf("%d-%02d-%02d", before.Year(), before.Month(), before.Day())
+			values[days].DAY = timebefore
+		}
+
+		for rows.Next() {
+			rows.Scan(&temps[i].DAY, &temps[i].AMOUNT)
+			i++
+		}
+
+		for _, temp := range temps {
+			if temp.DAY == "" {
+				continue
+			}
+			fmt.Println(temp)
+
+			for index, value := range values {
+				if temp.DAY == value.DAY {
+					values[index].AMOUNT = temp.AMOUNT
+				}
+			}
+		}
+		j, _ := json.Marshal(values)
+
+		return string(j)
 	}
 
 	return "없는 플레그 입니다."
@@ -102,20 +164,54 @@ func GetWeekAmount(db *sql.DB, cNameCode string) string {
 	return text
 }
 
-func GetWeekProductAmount(db *sql.DB) {
-	fmt.Println("eeee")
+func GetWeekProductAmount(db *sql.DB, cNameCode string) string {
+	fmt.Println("Get Week ProductAmount")
+
+	return ""
 }
 
-func GetMonthAmount(db *sql.DB) {
-	fmt.Println("zzzz")
+func GetMonthAmount(db *sql.DB, cNameCode string) string {
+	fmt.Println("Get Month Amount")
+
+	getSql := fmt.Sprintf(`select eom.sales_date, sum(eom.amount) from (select sales.sales_date, sum(sales.ea::int) as ea, sales.code,
+		(select price from product where sales.code=product.code) * sum(sales.ea::int) as amount
+		from sales, product
+		where to_date(sales_date, 'YYYY-MM-DD') <= NOW() and to_date(sales_date, 'YYYY-MM-DD') > NOW() - interval '30 DAYS'
+		and sales.code = product.code
+		and product.c_sid = '%s'
+		GROUP BY sales.sales_date, sales.code ORDER BY sales_date) as eom group by eom.sales_date`, cNameCode)
+	rows, err := db.Query(getSql)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+	text := DBToString(rows, 30, "MonthAmount")
+
+	return text
 }
 
 func GetMonthProductAmount(db *sql.DB) {
 	fmt.Println("cccc")
 }
 
-func GetYearAmount(db *sql.DB) {
-	fmt.Println("bbbb")
+func GetYearAmount(db *sql.DB, cNameCode string) string {
+	fmt.Println("Get Year Amount")
+
+	getSql := fmt.Sprintf(`select eom.sales_date, sum(eom.amount) from (select sales.sales_date, sum(sales.ea::int) as ea, sales.code,
+		(select price from product where sales.code=product.code) * sum(sales.ea::int) as amount
+		from sales, product
+		where to_date(sales_date, 'YYYY-MM-DD') <= NOW() and to_date(sales_date, 'YYYY-MM-DD') > NOW() - interval '365 DAYS'
+		and sales.code = product.code
+		and product.c_sid = '%s'
+		GROUP BY sales.sales_date, sales.code ORDER BY sales_date) as eom group by eom.sales_date`, cNameCode)
+	rows, err := db.Query(getSql)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+	text := DBToString(rows, 365, "YearAmount")
+
+	return text
 }
 
 func GetYearProductAmount(db *sql.DB) {

@@ -30,21 +30,35 @@ func getWeekAmount(c echo.Context) error {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// text := DBSQL.GetWeekAmount(db, strings.Split(decodedValue, " ")[1])
+
 	text := DBSQL.GetWeekAmount(db, decodedValue)
 	return c.String(http.StatusOK, text)
 }
 
 func getWeekProductAmount(c echo.Context) error {
 	defer c.Request().Body.Close()
-	DBSQL.GetWeekProductAmount(db)
-	return c.String(http.StatusOK, "return ok")
+
+	cNameCode := c.Param("cname-code")
+	decodedValue, err := url.QueryUnescape(cNameCode)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	text := DBSQL.GetWeekProductAmount(db, decodedValue)
+	return c.String(http.StatusOK, text)
 }
 
 func getMonthAmount(c echo.Context) error {
 	defer c.Request().Body.Close()
-	DBSQL.GetMonthAmount(db)
-	return c.String(http.StatusOK, "return ok")
+
+	cNameCode := c.Param("cname-code")
+	decodedValue, err := url.QueryUnescape(cNameCode)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	text := DBSQL.GetMonthAmount(db, decodedValue)
+	return c.String(http.StatusOK, text)
 }
 
 func getMonthProductAmount(c echo.Context) error {
@@ -55,8 +69,15 @@ func getMonthProductAmount(c echo.Context) error {
 
 func getYearAmount(c echo.Context) error {
 	defer c.Request().Body.Close()
-	DBSQL.GetYearAmount(db)
-	return c.String(http.StatusOK, "return ok")
+
+	cNameCode := c.Param("cname-code")
+	decodedValue, err := url.QueryUnescape(cNameCode)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	text := DBSQL.GetYearAmount(db, decodedValue)
+	return c.String(http.StatusOK, text)
 }
 
 func getYearProductAmount(c echo.Context) error {
