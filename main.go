@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"strings"
 
 	"github.com/eom/product-amount/DBSQL"
 	"github.com/labstack/echo"
@@ -31,7 +30,8 @@ func getWeekAmount(c echo.Context) error {
 	if err != nil {
 		log.Fatal(err)
 	}
-	text := DBSQL.GetWeekAmount(db, strings.Split(decodedValue, " ")[1])
+	// text := DBSQL.GetWeekAmount(db, strings.Split(decodedValue, " ")[1])
+	text := DBSQL.GetWeekAmount(db, decodedValue)
 	return c.String(http.StatusOK, text)
 }
 
