@@ -159,8 +159,6 @@ func DBToString(rows *sql.Rows, length int, flag string) string {
 func DBToJson(body *sql.Rows, products *sql.Rows, length int, allLength int) string {
 	values := ProductsAmount{}
 	dayList := make([]string, length)
-
-	temps := make([]ProductDayAmount, allLength)
 	names := make([]string, length)
 
 	for days := 0; days < length; days++ {
@@ -176,11 +174,14 @@ func DBToJson(body *sql.Rows, products *sql.Rows, length int, allLength int) str
 		products.Scan(&names[i])
 		i++
 	}
+	temps := make([]ProductDayAmount, i)
+
 	for index, _ := range temps {
 		temps[index].NAME = names[index]
 		temps[index].EA = make([]int, length)
 		temps[index].AMOUNT = make([]int, length)
 	}
+	// fmt.Println(temps)
 
 	i = 0
 	bodies := make([]ProductsAmountBody, allLength)
@@ -189,11 +190,15 @@ func DBToJson(body *sql.Rows, products *sql.Rows, length int, allLength int) str
 		i++
 	}
 
-	for index, b := range bodies {
+	for _, b := range bodies {
 		for dayIndex, timeValue := range dayList {
 			if timeValue == b.SALESDATE {
-				temps[index].EA[dayIndex], _ = strconv.Atoi(bodies[index].EA)
-				temps[index].AMOUNT[dayIndex], _ = strconv.Atoi(bodies[index].AMOUNT)
+				for tt, ttt := range temps {
+					if ttt.NAME == b.PRODUCTNAME {
+						temps[tt].EA[dayIndex], _ = strconv.Atoi(b.EA)
+						temps[tt].AMOUNT[dayIndex], _ = strconv.Atoi(b.AMOUNT)
+					}
+				}
 			}
 		}
 	}
