@@ -156,56 +156,52 @@ func DBToString(rows *sql.Rows, length int, flag string) string {
 	return "없는 플레그 입니다."
 }
 
-func DBToJson(body *sql.Rows, products *sql.Rows, length int, allLength int, flag string) string {
-	if flag == "WeekProductAmount" {
-		values := ProductsAmount{}
-		dayList := make([]string, length)
+func DBToJson(body *sql.Rows, products *sql.Rows, length int, allLength int) string {
+	values := ProductsAmount{}
+	dayList := make([]string, length)
 
-		temps := make([]ProductDayAmount, allLength)
-		names := make([]string, length)
+	temps := make([]ProductDayAmount, allLength)
+	names := make([]string, length)
 
-		for days := 0; days < length; days++ {
-			now := time.Now()
-			before := now.AddDate(0, 0, -(length-1)+days)
-			timebefore := fmt.Sprintf("%d-%02d-%02d", before.Year(), before.Month(), before.Day())
-			dayList[days] = timebefore
-		}
-		values.CATEGORIES = dayList
+	for days := 0; days < length; days++ {
+		now := time.Now()
+		before := now.AddDate(0, 0, -(length-1)+days)
+		timebefore := fmt.Sprintf("%d-%02d-%02d", before.Year(), before.Month(), before.Day())
+		dayList[days] = timebefore
+	}
+	values.CATEGORIES = dayList
 
-		var i int = 0
-		for products.Next() {
-			products.Scan(&names[i])
-			i++
-		}
-		for index, _ := range temps {
-			temps[index].NAME = names[index]
-			temps[index].EA = make([]int, length)
-			temps[index].AMOUNT = make([]int, length)
-		}
-
-		i = 0
-		bodies := make([]ProductsAmountBody, allLength)
-		for body.Next() {
-			body.Scan(&bodies[i].SALESDATE, &bodies[i].EA, &bodies[i].PRODUCTNAME, &bodies[i].AMOUNT)
-			i++
-		}
-
-		for index, b := range bodies {
-			for dayIndex, timeValue := range dayList {
-				if timeValue == b.SALESDATE {
-					temps[index].EA[dayIndex], _ = strconv.Atoi(bodies[index].EA)
-					temps[index].AMOUNT[dayIndex], _ = strconv.Atoi(bodies[index].AMOUNT)
-				}
-			}
-		}
-		values.SERIES = temps
-
-		j, _ := json.Marshal(values)
-
-		return string(j)
+	var i int = 0
+	for products.Next() {
+		products.Scan(&names[i])
+		i++
+	}
+	for index, _ := range temps {
+		temps[index].NAME = names[index]
+		temps[index].EA = make([]int, length)
+		temps[index].AMOUNT = make([]int, length)
 	}
 
-	return ""
+	i = 0
+	bodies := make([]ProductsAmountBody, allLength)
+	for body.Next() {
+		body.Scan(&bodies[i].SALESDATE, &bodies[i].EA, &bodies[i].PRODUCTNAME, &bodies[i].AMOUNT)
+		i++
+	}
+
+	for index, b := range bodies {
+		for dayIndex, timeValue := range dayList {
+			if timeValue == b.SALESDATE {
+				temps[index].EA[dayIndex], _ = strconv.Atoi(bodies[index].EA)
+				temps[index].AMOUNT[dayIndex], _ = strconv.Atoi(bodies[index].AMOUNT)
+			}
+		}
+	}
+	values.SERIES = temps
+
+	j, _ := json.Marshal(values)
+
+	return string(j)
 }
 
 func GetWeekAmount(db *sql.DB, cNameCode string) string {
@@ -266,7 +262,7 @@ func GetWeekProductAmount(db *sql.DB, cNameCode string) string {
 	var productAmountCnt int
 	_ = db.QueryRow(getSql).Scan(&productAmountCnt)
 
-	text := DBToJson(productAmountRows, productRows, 7, productAmountCnt, "WeekProductAmount")
+	text := DBToJson(productAmountRows, productRows, 7, productAmountCnt)
 
 	return text
 }
@@ -291,8 +287,47 @@ func GetMonthAmount(db *sql.DB, cNameCode string) string {
 	return text
 }
 
-func GetMonthProductAmount(db *sql.DB) {
-	fmt.Println("cccc")
+func GetMonthProductAmount(db *sql.DB, cNameCode string) string {
+	fmt.Println("Get Month ProductAmount")
+
+	getSql := fmt.Sprintf(`select sales.sales_date, sum(sales.ea::int) as ea, sales.code, 
+	(select price from product where sales.code=product.code) * sum(sales.ea::int) as amount
+	from sales, product 
+	where to_date(sales_date, 'YYYY-MM-DD') <= NOW() and to_date(sales_date, 'YYYY-MM-DD') > NOW() - interval '30 DAYS'
+	and sales.code = product.code
+	and product.c_sid = '%s'
+	GROUP BY sales.sales_date, sales.code ORDER BY sales_date`, cNameCode)
+	productAmountRows, err := db.Query(getSql)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer productAmountRows.Close()
+
+	getSql = fmt.Sprintf(`SELECT sales.code
+	FROM sales, product
+	WHERE to_date(sales_date, 'YYYY-MM-DD') <= NOW() and to_date(sales_date, 'YYYY-MM-DD') > NOW() - interval '30 DAYS'
+	and sales.code = product.code
+	and product.c_sid = '%s'
+	GROUP BY sales.code`, cNameCode)
+	productRows, err := db.Query(getSql)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer productRows.Close()
+
+	getSql = fmt.Sprintf(`SELECT COUNT(a.*) FROM (select sales.sales_date, sum(sales.ea::int) as ea, sales.code, 
+	(select price from product where sales.code=product.code) * sum(sales.ea::int) as amount
+	from sales, product 
+	where to_date(sales_date, 'YYYY-MM-DD') <= NOW() and to_date(sales_date, 'YYYY-MM-DD') > NOW() - interval '30 DAYS'
+	and sales.code = product.code
+	and product.c_sid = '%s'
+	GROUP BY sales.sales_date, sales.code ORDER BY sales_date) as a`, cNameCode)
+	var productAmountCnt int
+	_ = db.QueryRow(getSql).Scan(&productAmountCnt)
+
+	text := DBToJson(productAmountRows, productRows, 30, productAmountCnt)
+
+	return text
 }
 
 func GetYearAmount(db *sql.DB, cNameCode string) string {
@@ -315,8 +350,47 @@ func GetYearAmount(db *sql.DB, cNameCode string) string {
 	return text
 }
 
-func GetYearProductAmount(db *sql.DB) {
-	fmt.Println("gggg")
+func GetYearProductAmount(db *sql.DB, cNameCode string) string {
+	fmt.Println("Get Month ProductAmount")
+
+	getSql := fmt.Sprintf(`select sales.sales_date, sum(sales.ea::int) as ea, sales.code, 
+	(select price from product where sales.code=product.code) * sum(sales.ea::int) as amount
+	from sales, product 
+	where to_date(sales_date, 'YYYY-MM-DD') <= NOW() and to_date(sales_date, 'YYYY-MM-DD') > NOW() - interval '365 DAYS'
+	and sales.code = product.code
+	and product.c_sid = '%s'
+	GROUP BY sales.sales_date, sales.code ORDER BY sales_date`, cNameCode)
+	productAmountRows, err := db.Query(getSql)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer productAmountRows.Close()
+
+	getSql = fmt.Sprintf(`SELECT sales.code
+	FROM sales, product
+	WHERE to_date(sales_date, 'YYYY-MM-DD') <= NOW() and to_date(sales_date, 'YYYY-MM-DD') > NOW() - interval '365 DAYS'
+	and sales.code = product.code
+	and product.c_sid = '%s'
+	GROUP BY sales.code`, cNameCode)
+	productRows, err := db.Query(getSql)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer productRows.Close()
+
+	getSql = fmt.Sprintf(`SELECT COUNT(a.*) FROM (select sales.sales_date, sum(sales.ea::int) as ea, sales.code, 
+	(select price from product where sales.code=product.code) * sum(sales.ea::int) as amount
+	from sales, product 
+	where to_date(sales_date, 'YYYY-MM-DD') <= NOW() and to_date(sales_date, 'YYYY-MM-DD') > NOW() - interval '365 DAYS'
+	and sales.code = product.code
+	and product.c_sid = '%s'
+	GROUP BY sales.sales_date, sales.code ORDER BY sales_date) as a`, cNameCode)
+	var productAmountCnt int
+	_ = db.QueryRow(getSql).Scan(&productAmountCnt)
+
+	text := DBToJson(productAmountRows, productRows, 365, productAmountCnt)
+
+	return text
 }
 
 func GetOneMonth(db *sql.DB) {
