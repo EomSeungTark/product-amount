@@ -63,8 +63,15 @@ func getMonthAmount(c echo.Context) error {
 
 func getMonthProductAmount(c echo.Context) error {
 	defer c.Request().Body.Close()
-	DBSQL.GetMonthProductAmount(db)
-	return c.String(http.StatusOK, "return ok")
+
+	cNameCode := c.Param("cname-code")
+	decodedValue, err := url.QueryUnescape(cNameCode)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	text := DBSQL.GetMonthProductAmount(db, decodedValue)
+	return c.String(http.StatusOK, text)
 }
 
 func getYearAmount(c echo.Context) error {
@@ -82,8 +89,15 @@ func getYearAmount(c echo.Context) error {
 
 func getYearProductAmount(c echo.Context) error {
 	defer c.Request().Body.Close()
-	DBSQL.GetYearProductAmount(db)
-	return c.String(http.StatusOK, "return ok")
+
+	cNameCode := c.Param("cname-code")
+	decodedValue, err := url.QueryUnescape(cNameCode)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	text := DBSQL.GetYearProductAmount(db, decodedValue)
+	return c.String(http.StatusOK, text)
 }
 
 func getOneMonth(c echo.Context) error {
