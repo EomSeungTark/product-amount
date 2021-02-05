@@ -2,7 +2,9 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -100,22 +102,21 @@ func getYearProductAmount(c echo.Context) error {
 	return c.String(http.StatusOK, text)
 }
 
-func getOneMonth(c echo.Context) error {
+func getStartEndAmount(c echo.Context) error {
 	defer c.Request().Body.Close()
-	DBSQL.GetOneMonth(db)
-	return c.String(http.StatusOK, "return ok")
-}
 
-func getThreeMonth(c echo.Context) error {
-	defer c.Request().Body.Close()
-	DBSQL.GetThreeMonth(db)
-	return c.String(http.StatusOK, "return ok")
-}
+	StartDayEndDay := DBSQL.StartDayEndDay{}
 
-func getStartEnd(c echo.Context) error {
-	defer c.Request().Body.Close()
-	DBSQL.GetStartEnd(db)
-	return c.String(http.StatusOK, "return ok")
+	byte, err := ioutil.ReadAll(c.Request().Body)
+	if err != nil {
+		log.Printf("Failed reading the request body: %s", err)
+		return c.String(http.StatusInternalServerError, "")
+	}
+
+	err = json.Unmarshal(byte, &StartDayEndDay)
+	text := DBSQL.GetStartEndAmount(db, StartDayEndDay)
+
+	return c.String(http.StatusOK, text)
 }
 
 func getCompanyInfo(c echo.Context) error {
@@ -154,9 +155,7 @@ func main() {
 	groupCompany.GET("/GET/YEAR/AMOUNT/:cname-code", getYearAmount)
 	groupCompany.GET("/GET/YEAR/PRODUCTS-AMOUNT/:cname-code", getYearProductAmount)
 
-	groupPeriod.GET("/GET/ONEMONTH", getOneMonth)
-	groupPeriod.GET("/GET/THREEMONTH", getThreeMonth)
-	groupPeriod.GET("/GET/START-END", getStartEnd)
+	groupPeriod.POST("/GET/START-END", getStartEndAmount)
 
 	e.Start(":8000")
 }

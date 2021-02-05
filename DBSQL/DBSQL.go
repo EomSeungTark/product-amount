@@ -47,6 +47,12 @@ type CompanyInfo struct {
 	ADDRESS string `json:"address"`
 }
 
+type StartDayEndDay struct {
+	START   string `json:"startday"`
+	END     string `json:"endday"`
+	COMPANY string `json:"company"`
+}
+
 func DBToString(rows *sql.Rows, length int, flag string) string {
 	var i int = 0
 	if flag == "COMPANY" {
@@ -58,69 +64,7 @@ func DBToString(rows *sql.Rows, length int, flag string) string {
 		j, _ := json.Marshal(values)
 
 		return string(j)
-	} else if flag == "WeekAmount" {
-		values := make([]WeekAmount, length)
-		temps := make([]WeekAmount, length)
-
-		for days := 0; days < length; days++ {
-			now := time.Now()
-			before := now.AddDate(0, 0, -(length-1)+days)
-			timebefore := fmt.Sprintf("%d-%02d-%02d", before.Year(), before.Month(), before.Day())
-			values[days].DAY = timebefore
-		}
-
-		for rows.Next() {
-			rows.Scan(&temps[i].DAY, &temps[i].AMOUNT)
-			i++
-		}
-
-		for _, temp := range temps {
-			if temp.DAY == "" {
-				continue
-			}
-			fmt.Println(temp)
-
-			for index, value := range values {
-				if temp.DAY == value.DAY {
-					values[index].AMOUNT = temp.AMOUNT
-				}
-			}
-		}
-		j, _ := json.Marshal(values)
-
-		return string(j)
-	} else if flag == "MonthAmount" {
-		values := make([]WeekAmount, length)
-		temps := make([]WeekAmount, length)
-
-		for days := 0; days < length; days++ {
-			now := time.Now()
-			before := now.AddDate(0, 0, -(length-1)+days)
-			timebefore := fmt.Sprintf("%d-%02d-%02d", before.Year(), before.Month(), before.Day())
-			values[days].DAY = timebefore
-		}
-
-		for rows.Next() {
-			rows.Scan(&temps[i].DAY, &temps[i].AMOUNT)
-			i++
-		}
-
-		for _, temp := range temps {
-			if temp.DAY == "" {
-				continue
-			}
-			fmt.Println(temp)
-
-			for index, value := range values {
-				if temp.DAY == value.DAY {
-					values[index].AMOUNT = temp.AMOUNT
-				}
-			}
-		}
-		j, _ := json.Marshal(values)
-
-		return string(j)
-	} else if flag == "YearAmount" {
+	} else if flag == "Amount" {
 		values := make([]WeekAmount, length)
 		temps := make([]WeekAmount, length)
 
@@ -224,7 +168,7 @@ func GetWeekAmount(db *sql.DB, cNameCode string) string {
 		log.Fatal(err)
 	}
 	defer rows.Close()
-	text := DBToString(rows, 7, "WeekAmount")
+	text := DBToString(rows, 7, "Amount")
 
 	return text
 }
@@ -287,7 +231,7 @@ func GetMonthAmount(db *sql.DB, cNameCode string) string {
 		log.Fatal(err)
 	}
 	defer rows.Close()
-	text := DBToString(rows, 30, "MonthAmount")
+	text := DBToString(rows, 30, "Amount")
 
 	return text
 }
@@ -350,7 +294,7 @@ func GetYearAmount(db *sql.DB, cNameCode string) string {
 		log.Fatal(err)
 	}
 	defer rows.Close()
-	text := DBToString(rows, 365, "YearAmount")
+	text := DBToString(rows, 365, "Amount")
 
 	return text
 }
@@ -398,16 +342,35 @@ func GetYearProductAmount(db *sql.DB, cNameCode string) string {
 	return text
 }
 
-func GetOneMonth(db *sql.DB) {
-	fmt.Println("mmmm")
-}
+func GetStartEndAmount(db *sql.DB, dayjson StartDayEndDay) string {
+	fmt.Println("Get Start End Amount")
 
-func GetThreeMonth(db *sql.DB) {
-	fmt.Println("nnnn")
-}
+	getSql := fmt.Sprintf(`select eom.sales_date, sum(eom.amount) from (select sales.sales_date, sum(sales.ea::int) as ea, sales.code,
+		(select price from product where sales.code=product.code) * sum(sales.ea::int) as amount
+		from sales, product
+		where to_date(sales_date, 'YYYY-MM-DD') <= '%s' and to_date(sales_date, 'YYYY-MM-DD') > '%s'
+		and sales.code = product.code
+		and product.c_sid = '%s'
+		GROUP BY sales.sales_date, sales.code ORDER BY sales_date) as eom group by eom.sales_date`, dayjson.END, dayjson.START, dayjson.COMPANY)
+	rows, err := db.Query(getSql)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
 
-func GetStartEnd(db *sql.DB) {
-	fmt.Println("bbbb")
+	getSql = fmt.Sprintf(`SELECT COUNT(a.*) FROM (select eom.sales_date, sum(eom.amount) from (select sales.sales_date, sum(sales.ea::int) as ea, sales.code,
+	(select price from product where sales.code=product.code) * sum(sales.ea::int) as amount
+	from sales, product
+	where to_date(sales_date, 'YYYY-MM-DD') <= '%s' and to_date(sales_date, 'YYYY-MM-DD') > '%s'
+	and sales.code = product.code
+	and product.c_sid = '%s'
+	GROUP BY sales.sales_date, sales.code ORDER BY sales_date) as eom group by eom.sales_date) as a`, dayjson.END, dayjson.START, dayjson.COMPANY)
+	var periodAmountCnt int
+	_ = db.QueryRow(getSql).Scan(&periodAmountCnt)
+
+	text := DBToString(rows, periodAmountCnt, "Amount")
+
+	return text
 }
 
 func GetCompanyInfo(db *sql.DB) string {
