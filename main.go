@@ -114,6 +114,8 @@ func getStartEndAmount(c echo.Context) error {
 	}
 
 	err = json.Unmarshal(byte, &StartDayEndDay)
+	fmt.Println(byte)
+	fmt.Println(StartDayEndDay)
 	text := DBSQL.GetStartEndAmount(db, StartDayEndDay)
 
 	return c.String(http.StatusOK, text)
