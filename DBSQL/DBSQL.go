@@ -358,17 +358,11 @@ func GetStartEndAmount(db *sql.DB, dayjson StartDayEndDay) string {
 	}
 	defer rows.Close()
 
-	getSql = fmt.Sprintf(`SELECT COUNT(a.*) FROM (select eom.sales_date, sum(eom.amount) from (select sales.sales_date, sum(sales.ea::int) as ea, sales.code,
-	(select price from product where sales.code=product.code) * sum(sales.ea::int) as amount
-	from sales, product
-	where to_date(sales_date, 'YYYY-MM-DD') <= '%s' and to_date(sales_date, 'YYYY-MM-DD') > '%s'
-	and sales.code = product.code
-	and product.c_sid = '%s'
-	GROUP BY sales.sales_date, sales.code ORDER BY sales_date) as eom group by eom.sales_date) as a`, dayjson.END, dayjson.START, dayjson.COMPANY)
+	getSql = fmt.Sprintf(`select to_date('%s', 'yyyy-mm-dd') - '%s'`, dayjson.END, dayjson.START)
 	var periodAmountCnt int
 	_ = db.QueryRow(getSql).Scan(&periodAmountCnt)
 
-	text := DBToString(rows, periodAmountCnt, "Amount")
+	text := DBToString(rows, periodAmountCnt+1, "Amount")
 
 	return text
 }
