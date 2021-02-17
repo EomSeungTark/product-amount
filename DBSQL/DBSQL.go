@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -51,6 +52,16 @@ type StartDayEndDay struct {
 	START   string `json:"startday"`
 	END     string `json:"endday"`
 	COMPANY string `json:"company"`
+}
+
+type NoticeInfo struct {
+	SID       string `json:"sid"`
+	TITLE     string `json:"title"`
+	CONTEXT   string `json:"context"`
+	USERID    string `json:"user_id"`
+	DATE      string `json:"date"`
+	VIEWCOUNT string `json:"view_count"`
+	SECTION   string `json:"section"`
 }
 
 func DBToString(rows *sql.Rows, length int, flag string) string {
@@ -381,4 +392,58 @@ func GetCompanyInfo(db *sql.DB) string {
 
 	text := DBToString(rows, companyCnt, "COMPANY")
 	return text
+}
+
+func ListLoad(db *sql.DB) string {
+	getUserSql := fmt.Sprint("SELECT * FROM NOTICE ORDER BY SECTION DESC, DATE DESC")
+	rows, err := db.Query(getUserSql)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	var cnt int
+	_ = db.QueryRow(`select count(*) from NOTICE`).Scan(&cnt)
+	text := DBToString(rows, cnt, "NOTICE")
+
+	return text
+}
+
+func ListSize(db *sql.DB) string {
+	var cnt int
+	_ = db.QueryRow(`select count(*) from NOTICE`).Scan(&cnt)
+
+	return strconv.Itoa(cnt)
+}
+
+func ListContext(db *sql.DB, sid string) string {
+	sqlState := fmt.Sprintf("update notice set VIEW_COUNT=VIEW_COUNT+1 where SID=%s", sid)
+	_, _ = db.Query(sqlState)
+
+	getUserSql := fmt.Sprintf("SELECT * FROM NOTICE WHERE SID=%s", sid)
+	rows, err := db.Query(getUserSql)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	text := DBToString(rows, 1, "NOTICE_ONE")
+
+	return text
+}
+
+func ListCreate(db *sql.DB, data *NoticeInfo) string {
+	t := time.Now()
+	formatted := fmt.Sprintf("%d-%02d-%02d-%02d-%02d-%02d",
+		t.Year(), t.Month(), t.Day(),
+		t.Hour(), t.Minute(), t.Second())
+
+	sqlState := fmt.Sprintf("INSERT INTO NOTICE (TITLE, CONTEXT, USER_ID, DATE, VIEW_COUNT, SECTION) VALUES ('%s', '%s', '%s', '%s', '%s', '%s')", data.TITLE, data.CONTEXT, data.USERID, formatted, "0", strings.ToUpper(data.SECTION))
+	rows, err := db.Query(sqlState)
+	if err != nil {
+		return "fail"
+	}
+
+	defer rows.Close()
+	return "true"
 }

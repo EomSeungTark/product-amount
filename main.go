@@ -114,8 +114,6 @@ func getStartEndAmount(c echo.Context) error {
 	}
 
 	err = json.Unmarshal(byte, &StartDayEndDay)
-	fmt.Println(byte)
-	fmt.Println(StartDayEndDay)
 	text := DBSQL.GetStartEndAmount(db, StartDayEndDay)
 
 	return c.String(http.StatusOK, text)
@@ -125,6 +123,46 @@ func getCompanyInfo(c echo.Context) error {
 	defer c.Request().Body.Close()
 	companyInfos := DBSQL.GetCompanyInfo(db)
 	return c.String(http.StatusOK, companyInfos)
+}
+
+func listServe(c echo.Context) error {
+	defer c.Request().Body.Close()
+
+	noticeList := DBSQL.ListLoad(db)
+	return c.String(http.StatusOK, noticeList)
+}
+
+func listContext(c echo.Context) error {
+	defer c.Request().Body.Close()
+
+	sid := c.Param("sid")
+	noticeContext := DBSQL.ListContext(db, sid)
+
+	var li DBSQL.NoticeInfo
+	json.Unmarshal([]byte(noticeContext), &li)
+	fmt.Println(li.SID)
+
+	if li.SID != "" {
+		return c.String(http.StatusOK, noticeContext)
+	} else {
+		return c.String(http.StatusBadRequest, noticeContext)
+	}
+}
+
+func listCreate(c echo.Context) error {
+	u := new(DBSQL.NoticeInfo)
+	defer c.Request().Body.Close()
+
+	if err := c.Bind(u); err != nil {
+		return c.String(http.StatusBadRequest, "return not ok")
+	}
+	result := DBSQL.ListCreate(db, u)
+
+	if result == "true" {
+		return c.String(http.StatusOK, "return ok")
+	} else {
+		return c.String(http.StatusBadRequest, "create fail")
+	}
 }
 
 func main() {
@@ -158,6 +196,22 @@ func main() {
 	groupCompany.GET("/GET/YEAR/PRODUCTS-AMOUNT/:cname-code", getYearProductAmount)
 
 	groupPeriod.POST("/GET/START-END", getStartEndAmount)
+
+	e.GET("/LIST/GETLISTS", listServe)
+	e.GET("/LIST/GETLIST/:sid", listContext)
+	e.POST("/LIST/CREATELIST", listCreate)
+
+	// e.POST("/login", LOGINFEATURE.Login)
+	// e.GET("/", LOGINFEATURE.Accessible)
+	// r := e.Group("/restricted")
+
+	// // Configure middleware with the custom claims type
+	// config := middleware.JWTConfig{
+	// 	Claims:     &(LOGINFEATURE.JwtCustomClaims{}),
+	// 	SigningKey: []byte("secret"),
+	// }
+	// r.Use(middleware.JWTWithConfig(config))
+	// r.GET("", LOGINFEATURE.Restricted)
 
 	e.Start(":8000")
 }
