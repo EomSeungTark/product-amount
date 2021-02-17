@@ -106,6 +106,24 @@ func DBToString(rows *sql.Rows, length int, flag string) string {
 		j, _ := json.Marshal(values)
 
 		return string(j)
+	} else if flag == "NOTICE" {
+		values := make([]NoticeInfo, length)
+		for rows.Next() {
+			rows.Scan(&values[i].SID, &values[i].TITLE, &values[i].CONTEXT, &values[i].USERID, &values[i].DATE, &values[i].VIEWCOUNT, &values[i].SECTION)
+			i++
+		}
+		j, _ := json.Marshal(values)
+
+		return string(j)
+	} else if flag == "NOTICE_ONE" {
+		value := NoticeInfo{}
+		for rows.Next() {
+			rows.Scan(&value.SID, &value.TITLE, &value.CONTEXT, &value.USERID, &value.DATE, &value.VIEWCOUNT, &value.SECTION)
+			i++
+		}
+		j, _ := json.Marshal(value)
+
+		return string(j)
 	}
 
 	return "없는 플레그 입니다."
