@@ -165,6 +165,15 @@ func listCreate(c echo.Context) error {
 	}
 }
 
+func listSize(c echo.Context) error {
+	defer c.Request().Body.Close()
+
+	noticeSize := DBSQL.ListSize(db)
+	// c.Response().Header().Set("Access-Control-Allow-Origin", "*")
+	return c.String(http.StatusOK, noticeSize)
+}
+
+
 func main() {
 	var err error
 
@@ -200,6 +209,7 @@ func main() {
 	e.GET("/LIST/GETLISTS", listServe)
 	e.GET("/LIST/GETLIST/:sid", listContext)
 	e.POST("/LIST/CREATELIST", listCreate)
+	e.GET("/LIST/GETLISTSIZE", listSize)
 
 	// e.POST("/login", LOGINFEATURE.Login)
 	// e.GET("/", LOGINFEATURE.Accessible)
