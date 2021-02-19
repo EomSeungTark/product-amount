@@ -89,6 +89,32 @@ func getYearAmount(c echo.Context) error {
 	return c.String(http.StatusOK, text)
 }
 
+func getMonthalfAmount(c echo.Context) error {
+	defer c.Request().Body.Close()
+
+	cNameCode := c.Param("cname-code")
+	decodedValue, err := url.QueryUnescape(cNameCode)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	text := DBSQL.GetMonthalfAmount(db, decodedValue)
+	return c.String(http.StatusOK, text)
+}
+
+func getMonthalfProductAmount(c echo.Context) error {
+	defer c.Request().Body.Close()
+
+	cNameCode := c.Param("cname-code")
+	decodedValue, err := url.QueryUnescape(cNameCode)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	text := DBSQL.GetMonthalfProductAmount(db, decodedValue)
+	return c.String(http.StatusOK, text)
+}
+
 func getYearProductAmount(c echo.Context) error {
 	defer c.Request().Body.Close()
 
@@ -203,6 +229,10 @@ func main() {
 
 	groupCompany.GET("/GET/YEAR/AMOUNT/:cname-code", getYearAmount)
 	groupCompany.GET("/GET/YEAR/PRODUCTS-AMOUNT/:cname-code", getYearProductAmount)
+
+	groupCompany.GET("/GET/MONTHALF/AMOUNT/:cname-code", getMonthalfAmount)
+	groupCompany.GET("/GET/MONTHALF/PRODUCTS-AMOUNT/:cname-code", getMONTHALFProductAmount)
+
 
 	groupPeriod.POST("/GET/START-END", getStartEndAmount)
 

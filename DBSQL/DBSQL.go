@@ -371,6 +371,69 @@ func GetYearProductAmount(db *sql.DB, cNameCode string) string {
 	return text
 }
 
+func GetMonthalfAmount(db *sql.DB, cNameCode string) string {
+	fmt.Println("Get Year Amount")
+
+	getSql := fmt.Sprintf(`select eom.sales_date, sum(eom.amount) from (select sales.sales_date, sum(sales.ea::int) as ea, sales.code,
+		(select price from product where sales.code=product.code) * sum(sales.ea::int) as amount
+		from sales, product
+		where to_date(sales_date, 'YYYY-MM-DD') <= NOW() and to_date(sales_date, 'YYYY-MM-DD') > NOW() - interval '90 DAYS'
+		and sales.code = product.code
+		and product.c_sid = '%s'
+		GROUP BY sales.sales_date, sales.code ORDER BY sales_date) as eom group by eom.sales_date`, cNameCode)
+	rows, err := db.Query(getSql)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+	text := DBToString(rows, 90, "Amount")
+
+	return text
+}
+
+func GetMonthalfProductAmount(db *sql.DB, cNameCode string) string {
+	fmt.Println("Get Month ProductAmount")
+
+	getSql := fmt.Sprintf(`select sales.sales_date, sum(sales.ea::int) as ea, sales.code, 
+	(select price from product where sales.code=product.code) * sum(sales.ea::int) as amount
+	from sales, product 
+	where to_date(sales_date, 'YYYY-MM-DD') <= NOW() and to_date(sales_date, 'YYYY-MM-DD') > NOW() - interval '90 DAYS'
+	and sales.code = product.code
+	and product.c_sid = '%s'
+	GROUP BY sales.sales_date, sales.code ORDER BY sales_date`, cNameCode)
+	productAmountRows, err := db.Query(getSql)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer productAmountRows.Close()
+
+	getSql = fmt.Sprintf(`SELECT sales.code
+	FROM sales, product
+	WHERE to_date(sales_date, 'YYYY-MM-DD') <= NOW() and to_date(sales_date, 'YYYY-MM-DD') > NOW() - interval '90 DAYS'
+	and sales.code = product.code
+	and product.c_sid = '%s'
+	GROUP BY sales.code`, cNameCode)
+	productRows, err := db.Query(getSql)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer productRows.Close()
+
+	getSql = fmt.Sprintf(`SELECT COUNT(a.*) FROM (select sales.sales_date, sum(sales.ea::int) as ea, sales.code, 
+	(select price from product where sales.code=product.code) * sum(sales.ea::int) as amount
+	from sales, product 
+	where to_date(sales_date, 'YYYY-MM-DD') <= NOW() and to_date(sales_date, 'YYYY-MM-DD') > NOW() - interval '90 DAYS'
+	and sales.code = product.code
+	and product.c_sid = '%s'
+	GROUP BY sales.sales_date, sales.code ORDER BY sales_date) as a`, cNameCode)
+	var productAmountCnt int
+	_ = db.QueryRow(getSql).Scan(&productAmountCnt)
+
+	text := DBToJson(productAmountRows, productRows, 90, productAmountCnt)
+
+	return text
+}
+
 func GetStartEndAmount(db *sql.DB, dayjson StartDayEndDay) string {
 	fmt.Println("Get Start End Amount")
 
