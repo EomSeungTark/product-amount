@@ -231,7 +231,7 @@ func main() {
 	groupCompany.GET("/GET/YEAR/PRODUCTS-AMOUNT/:cname-code", getYearProductAmount)
 
 	groupCompany.GET("/GET/MONTHALF/AMOUNT/:cname-code", getMonthalfAmount)
-	groupCompany.GET("/GET/MONTHALF/PRODUCTS-AMOUNT/:cname-code", getMONTHALFProductAmount)
+	groupCompany.GET("/GET/MONTHALF/PRODUCTS-AMOUNT/:cname-code", getMonthalfProductAmount)
 
 
 	groupPeriod.POST("/GET/START-END", getStartEndAmount)
